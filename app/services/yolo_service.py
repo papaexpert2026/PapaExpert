@@ -37,6 +37,7 @@ class YOLOService:
         self.model = YOLO(str(model_path))
         self.confidence_threshold = settings.YOLO_CONFIDENCE
 
+
     @classmethod
     def get_instance(cls) -> "YOLOService":
         if cls._instance is None:

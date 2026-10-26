@@ -7,6 +7,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+import asyncio
+import logging
+from pathlib import Path
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -25,6 +28,58 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+_logger = logging.getLogger(__name__)
+_treatment_notification_task: asyncio.Task | None = None
+
+
+async def _run_treatment_notification_worker() -> None:
+    from app.services.treatment_notification_service import (
+        process_due_treatment_notifications,
+    )
+
+    while True:
+        try:
+            count = await asyncio.to_thread(process_due_treatment_notifications)
+            if count:
+                _logger.info("Se enviaron %s notificaciones de tratamiento.", count)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _logger.exception("Falló el ciclo de notificaciones de tratamientos.")
+        await asyncio.sleep(30)
+
+
+@app.on_event("startup")
+async def start_treatment_notification_worker() -> None:
+    global _treatment_notification_task
+    service_account_path = settings.FIREBASE_SERVICE_ACCOUNT_PATH
+    if service_account_path and not Path(service_account_path).is_file():
+        _logger.error(
+            "No se inicia el worker de tratamientos: no existe el archivo de "
+            "credenciales Firebase configurado en FIREBASE_SERVICE_ACCOUNT_PATH."
+        )
+        return
+    if not service_account_path and settings.APP_ENV == "production":
+        _logger.error(
+            "No se inicia el worker de tratamientos: configura el archivo "
+            "de credenciales de Firebase Admin en Render."
+        )
+        return
+
+    _treatment_notification_task = asyncio.create_task(
+        _run_treatment_notification_worker()
+    )
+
+
+@app.on_event("shutdown")
+async def stop_treatment_notification_worker() -> None:
+    if _treatment_notification_task is not None:
+        _treatment_notification_task.cancel()
+        try:
+            await _treatment_notification_task
+        except asyncio.CancelledError:
+            pass
 
 
 # ============================================================
@@ -128,8 +183,7 @@ async def validation_exception_handler(
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={
             "success": False,
-            "data": None,
-            "message": message,
+             "message": message,
             "error_code": "VALIDATION_ERROR",
         },
     )

@@ -15,6 +15,8 @@ class CropCreateRequest(BaseModel):
     location_label: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    # growing | flowering | tuber_formation | maturation | harvested
+    status: str | None = None
     notes: str | None = None
 
 
@@ -27,6 +29,7 @@ class CropOut(BaseModel):
     location_label: str | None
     latitude: float | None
     longitude: float | None
+    status: str | None
     notes: str | None
     created_at: datetime
 
@@ -36,3 +39,19 @@ class CropOut(BaseModel):
 class CropListResponse(BaseModel):
     items: list[CropOut]
     total: int
+
+
+class CropDetectionSummaryItem(BaseModel):
+    id: int
+    disease: str
+    confidence: float
+    image_path: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CropDetectionsResponse(BaseModel):
+    total: int
+    last_disease: str | None
+    items: list[CropDetectionSummaryItem]

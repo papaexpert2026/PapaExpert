@@ -28,8 +28,14 @@ class Crop(Base):
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
 
+    # Etapa del cultivo. Nullable/opcional: no todos los cultivos existentes
+    # tendrán esto seteado, y no es obligatorio para registrar uno nuevo.
+    # Valores esperados en Flutter: growing | flowering | tuber_formation | maturation | harvested
+    status: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User")
+    detections = relationship("Detection", back_populates="crop")

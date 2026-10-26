@@ -27,3 +27,6 @@ class PredictionResponseData(BaseModel):
     plant: str
     detections: list[DetectionResultItem]
     image_url: str | None = None
+    crop_id: int | None = None
+    crop_name: str | None = None
+    crop_variety: str | None = None

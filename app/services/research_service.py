@@ -5,7 +5,6 @@ reciente guardado.
 """
 
 import json
-
 from app.repositories.research_repository import ResearchRepository
 from app.schemas.research_schema import ResearchResponseData, ResearchSourceItem
 from app.services.openai_service import research_disease

@@ -2,38 +2,28 @@
 Rutas de verificación de estado del backend.
 """
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import text
-from sqlalchemy.orm import Session
-
-from app.db.session import get_db
+from fastapi import APIRouter
 
 router = APIRouter(tags=["Health"])
 
 
 @router.get("/health")
-def health_check(db: Session = Depends(get_db)) -> dict:
+def health_check() -> dict:
     """
     GET /api/v1/health
 
-    Verifica que el backend está activo y que la conexión a
-    PostgreSQL funciona correctamente.
+    Verifica que el proceso HTTP está activo. Firebase se valida en las
+    rutas protegidas para evitar que Render dependa de PostgreSQL.
 
     Response 200:
     {
         "success": true,
-        "data": { "database": "connected" },
+        "data": { "status": "ok" },
         "message": "PapaExpert backend operativo."
     }
     """
-    try:
-        db.execute(text("SELECT 1"))
-        database_status = "connected"
-    except Exception:
-        database_status = "disconnected"
-
     return {
         "success": True,
-        "data": {"database": database_status},
+        "data": {"status": "ok"},
         "message": "PapaExpert backend operativo.",
     }

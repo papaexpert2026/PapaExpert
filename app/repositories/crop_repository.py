@@ -6,6 +6,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.models.crop_model import Crop
+from app.models.detection_model import Detection
 from app.schemas.crop_schema import CropCreateRequest
 
 
@@ -43,3 +44,18 @@ class CropRepository:
     def delete(self, crop: Crop) -> None:
         self.db.delete(crop)
         self.db.commit()
+
+    def get_detections_summary(self, crop_id: int, user_id: int) -> tuple[list[Detection], int, str | None]:
+        """
+        Retorna (detecciones_ordenadas_por_fecha_desc, total, nombre_de_la_ultima_enfermedad).
+        Se filtra también por user_id para no exponer datos de otro usuario
+        aunque alguien adivine un crop_id ajeno.
+        """
+        stmt = (
+            select(Detection)
+            .where(Detection.crop_id == crop_id, Detection.user_id == user_id)
+            .order_by(Detection.created_at.desc(), Detection.id.desc())
+        )
+        items = list(self.db.execute(stmt).scalars().all())
+        last_disease = items[0].disease if items else None
+        return items, len(items), last_disease

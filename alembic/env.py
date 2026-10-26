@@ -1,7 +1,9 @@
 """
-Configuración de Alembic. Lee la URL real de la base de datos desde
-app.core.config (nuestro .env), no desde alembic.ini, para no duplicar
-la configuración en dos lugares.
+Configuración de Alembic.
+
+Lee la URL real de la base de datos desde app.core.config.
+Si PostgreSQL entrega una URL postgresql://, la adapta a
+postgresql+psycopg:// para utilizar psycopg3.
 """
 
 from logging.config import fileConfig
@@ -12,8 +14,7 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import settings
 from app.db.base import Base
 
-# Importamos todos los modelos para que Base.metadata los conozca
-# y Alembic pueda autogenerar migraciones a partir de ellos.
+# Importamos todos los modelos para que Base.metadata los conozca.
 from app.models import (
     user_model,
     detection_model,
@@ -22,23 +23,37 @@ from app.models import (
     research_cache_model,
 )  # noqa: F401
 
+
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+database_url = settings.DATABASE_URL
+
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace(
+        "postgresql://",
+        "postgresql+psycopg://",
+        1,
+    )
+
+config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
 
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
+
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
+
     with context.begin_transaction():
         context.run_migrations()
 
@@ -49,8 +64,13 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+        )
+
         with context.begin_transaction():
             context.run_migrations()
 

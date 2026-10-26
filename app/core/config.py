@@ -19,17 +19,21 @@ class Settings(BaseSettings):
     # === App ===
     APP_NAME: str = "PapaExpert"
     APP_ENV: str = "development"
+    FIREBASE_PROJECT_ID: str = "papaexpert-9883d"
+    FIREBASE_SERVICE_ACCOUNT_PATH: str | None = None
 
     # === Base de datos ===
-    DATABASE_URL: str
+    # Firebase es el almacenamiento principal de la app. La base SQL solo se
+    # usa en rutas antiguas y puede quedar sin configurar en Render.
+    DATABASE_URL: str | None = None
 
     # === OpenAI ===
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str = "gpt-4.1-mini"
 
     # === YOLO ===
     YOLO_MODEL_PATH: str = "models/best.pt"
-    YOLO_CONFIDENCE: float = 0.5
+    YOLO_CONFIDENCE: float = 0.25
 
     # === CORS ===
     CORS_ORIGINS: str = "http://localhost"

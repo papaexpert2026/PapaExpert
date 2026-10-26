@@ -13,6 +13,9 @@ class DetectionOut(BaseModel):
     disease: str
     confidence: float
     image_path: str
+    crop_id: int | None = None
+    crop_name: str | None = None
+    crop_variety: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

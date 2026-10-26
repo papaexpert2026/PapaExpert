@@ -1,5 +1,6 @@
 """
-Modelo de sesión de chat: agrupa los mensajes relacionados a una detección.
+Modelo de sesión de chat: agrupa los mensajes relacionados a una detección,
+o a una conversación GENERAL sin detección asociada (detection_id = NULL).
 """
 
 from datetime import datetime
@@ -15,7 +16,11 @@ class ChatSession(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    detection_id: Mapped[int] = mapped_column(ForeignKey("detections.id"), nullable=False, index=True)
+
+    # Nullable a propósito: una sesión SIN detección es el "Asistente IA"
+    # general accesible desde el menú, donde el usuario puede preguntar por
+    # cualquier enfermedad que la app conozca sin partir de un diagnóstico.
+    detection_id: Mapped[int | None] = mapped_column(ForeignKey("detections.id"), nullable=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

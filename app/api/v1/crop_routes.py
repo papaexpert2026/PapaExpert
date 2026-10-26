@@ -13,7 +13,13 @@ from app.core.dependencies import get_current_user
 from app.db.session import get_db
 from app.models.user_model import User
 from app.repositories.crop_repository import CropRepository
-from app.schemas.crop_schema import CropCreateRequest, CropListResponse, CropOut
+from app.schemas.crop_schema import (
+    CropCreateRequest,
+    CropDetectionsResponse,
+    CropDetectionSummaryItem,
+    CropListResponse,
+    CropOut,
+)
 from app.utils.response_builder import success_response
 
 router = APIRouter(prefix="/crops", tags=["Crops"])
@@ -93,3 +99,30 @@ def delete_crop(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cultivo no encontrado.")
     repository.delete(crop)
     return success_response(data=None, message="Cultivo eliminado.")
+
+
+@router.get("/{crop_id}/detections")
+def get_crop_detections(
+    crop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Headers: Authorization: Bearer <token>
+
+    Response 200: { "total": int, "last_disease": str|null, "items": [...] }
+    Errores: 404 si el cultivo no existe o no pertenece al usuario.
+    """
+    repository = CropRepository(db)
+    crop = repository.get_by_id(crop_id, current_user.id)
+    if crop is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cultivo no encontrado.")
+
+    items, total, last_disease = repository.get_detections_summary(crop_id, current_user.id)
+
+    payload = CropDetectionsResponse(
+        total=total,
+        last_disease=last_disease,
+        items=[CropDetectionSummaryItem.model_validate(item) for item in items],
+    )
+    return success_response(data=payload.model_dump(), message="Historial del cultivo obtenido.")

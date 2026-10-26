@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: papaexpert-api
+    runtime: docker
+    plan: 1c-2g
+    region: oregon
+    autoDeployTrigger: commit
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: FIREBASE_PROJECT_ID
+        value: papaexpert-9883d
+      - key: FIREBASE_SERVICE_ACCOUNT_PATH
+        value: /etc/secrets/firebase-service-account.json
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: JWT_SECRET
+        generateValue: true
+      - key: YOLO_MODEL_PATH
+        value: models/best.pt
+      - key: YOLO_CONFIDENCE
+        value: "0.25"
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "8"
+      - key: UPLOAD_DIR
+        value: /tmp/papaexpert/uploads

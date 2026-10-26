@@ -1,7 +1,8 @@
 """
-GET /api/v1/detections
-GET /api/v1/detections/{id}
-GET /api/v1/detections/{id}/research
+GET    /api/v1/detections
+GET    /api/v1/detections/{id}
+DELETE /api/v1/detections/{id}
+GET    /api/v1/detections/{id}/research
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -28,18 +29,34 @@ def list_detections(
 ) -> dict:
     """
     Headers: Authorization: Bearer <token>
-    Query params: limit (1-100, default 20), offset (default 0)
 
-    Response 200: lista de detecciones del usuario ordenadas por fecha descendente.
+    Query params:
+    - limit: cantidad de registros (1-100)
+    - offset: desplazamiento
+
+    Response 200:
+    lista de detecciones del usuario ordenadas por fecha descendente.
     """
     repository = DetectionRepository(db)
-    items, total = repository.list_by_user(current_user.id, limit=limit, offset=offset)
+
+    items, total = repository.list_by_user(
+        current_user.id,
+        limit=limit,
+        offset=offset,
+    )
 
     payload = DetectionListResponse(
-        items=[DetectionOut.model_validate(item) for item in items],
+        items=[
+            DetectionOut.model_validate(item)
+            for item in items
+        ],
         total=total,
     )
-    return success_response(data=payload.model_dump(), message="Detecciones obtenidas.")
+
+    return success_response(
+        data=payload.model_dump(),
+        message="Detecciones obtenidas.",
+    )
 
 
 @router.get("/{detection_id}")
@@ -52,16 +69,68 @@ def get_detection(
     Headers: Authorization: Bearer <token>
 
     Response 200: detalle de una detección.
-    Errores: 404 si la detección no existe o no pertenece al usuario.
+
+    Errores:
+    404 si la detección no existe o no pertenece al usuario.
     """
     repository = DetectionRepository(db)
-    detection = repository.get_by_id(detection_id, current_user.id)
+
+    detection = repository.get_by_id(
+        detection_id,
+        current_user.id,
+    )
+
     if detection is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Detección no encontrada.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Detección no encontrada.",
+        )
 
     return success_response(
-        data=DetectionOut.model_validate(detection).model_dump(),
+        data=DetectionOut.model_validate(
+            detection
+        ).model_dump(),
         message="Detección obtenida.",
+    )
+
+
+@router.delete("/{detection_id}")
+def delete_detection(
+    detection_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Headers: Authorization: Bearer <token>
+
+    Elimina una detección perteneciente al usuario autenticado.
+
+    Response 200:
+    confirmación de eliminación.
+
+    Errores:
+    404 si la detección no existe o no pertenece al usuario.
+    """
+    repository = DetectionRepository(db)
+
+    detection = repository.get_by_id(
+        detection_id,
+        current_user.id,
+    )
+
+    if detection is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Detección no encontrada.",
+        )
+
+    repository.delete(detection)
+
+    return success_response(
+        data={
+            "id": detection_id,
+        },
+        message="Detección eliminada correctamente.",
     )
 
 
@@ -74,22 +143,54 @@ async def get_detection_research(
     """
     Headers: Authorization: Bearer <token>
 
-    Busca en internet (con caché de hasta 30 días por enfermedad) artículos
-    e información actualizada sobre la enfermedad de esta detección, para
-    mostrar ANTES de que el usuario entre al chat.
+    Busca en internet (con caché de hasta 30 días por enfermedad)
+    artículos e información actualizada sobre la enfermedad de esta
+    detección.
 
-    Response 200: { "disease":..., "content":..., "sources":[{"title","url"}], "from_cache": bool }
-    Errores: 404 si la detección no existe, 503 si la búsqueda web falla.
+    Response 200:
+    {
+        "disease": "...",
+        "content": "...",
+        "sources": [
+            {
+                "title": "...",
+                "url": "..."
+            }
+        ],
+        "from_cache": true
+    }
+
+    Errores:
+    404 si la detección no existe.
+    503 si la búsqueda web falla.
     """
     repository = DetectionRepository(db)
-    detection = repository.get_by_id(detection_id, current_user.id)
+
+    detection = repository.get_by_id(
+        detection_id,
+        current_user.id,
+    )
+
     if detection is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Detección no encontrada.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Detección no encontrada.",
+        )
 
     service = ResearchService(db)
-    try:
-        result = await service.get_research(plant=detection.plant, disease=detection.disease)
-    except OpenAIServiceError as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
-    return success_response(data=result.model_dump(), message="Investigación obtenida.")
+    try:
+        result = await service.get_research(
+            plant=detection.plant,
+            disease=detection.disease,
+        )
+    except OpenAIServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return success_response(
+        data=result.model_dump(),
+        message="Investigación obtenida.",
+    )

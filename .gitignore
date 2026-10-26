@@ -1,28 +1,16 @@
-# ==========================================
-
-# ENTORNOS VIRTUALES
-
-# ==========================================
+# Entornos virtuales
 
 venv/
 .venv/
 env/
 
-# ==========================================
-
-# VARIABLES DE ENTORNO Y SECRETOS
-
-# ==========================================
+# Variables de entorno y secretos
 
 .env
 .env.*
 !.env.example
 
-# ==========================================
-
-# PYTHON
-
-# ==========================================
+# Python
 
 **pycache**/
 *.py[cod]
@@ -30,89 +18,51 @@ env/
 *.so
 *.egg-info/
 
-# ==========================================
-
-# TESTING
-
-# ==========================================
+# Testing
 
 .pytest_cache/
 .coverage
 htmlcov/
 
-# ==========================================
-
 # IDE
-
-# ==========================================
 
 .vscode/
 .idea/
 *.iml
 
-# ==========================================
-
-# SISTEMA OPERATIVO
-
-# ==========================================
+# Sistema operativo
 
 .DS_Store
 Thumbs.db
 
-# ==========================================
-
-# LOGS
-
-# ==========================================
+# Logs
 
 *.log
 
-# ==========================================
-
-# ARCHIVOS TEMPORALES
-
-# ==========================================
+# Archivos temporales
 
 *.tmp
 *.temp
 
-# ==========================================
-
-# ARCHIVOS GENERADOS
-
-# ==========================================
+# Archivos generados
 
 build/
 dist/
 
-# ==========================================
-
-# IMÁGENES SUBIDAS POR USUARIOS
-
-# ==========================================
+# Imágenes subidas por usuarios
 
 uploads/*
 !uploads/.gitkeep
 
-# ==========================================
-
-# MODELOS YOLO
-
-# ==========================================
-
-# best.pt se mantiene dentro de GitHub
-
-# porque es necesario para desplegar el backend.
-
-#
-
-# NO ignorar archivos .pt.
-
-# ==========================================
-
-# CACHE DE YOLO / ULTRALYTICS
-
-# ==========================================
+# Cache de YOLO / Ultralytics
 
 .ultralytics/
 runs/
+
+# NOTA:
+
+# models/best.pt NO se ignora.
+
+# El modelo YOLO forma parte del backend.
+secret/
+app/secrets/

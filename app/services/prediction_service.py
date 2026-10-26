@@ -10,7 +10,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config.disease_classes import get_disease_info
-from app.core.paths import UPLOADS_DIR  # <-- CAMBIO: misma fuente que main.py
+from app.core.paths import UPLOADS_DIR
 from app.repositories.detection_repository import DetectionRepository
 from app.schemas.prediction_schema import BoundingBox, DetectionResultItem, PredictionResponseData
 from app.services.yolo_service import YOLOService
@@ -21,32 +21,26 @@ class PredictionService:
         self.db = db
         self.detection_repository = DetectionRepository(db)
 
-    def _save_image(self, contents: bytes, original_filename: str) -> tuple[Path, str]:
-        """
-        Guarda la imagen en la carpeta de uploads y devuelve:
-        - destination: la ruta absoluta real en disco (para que YOLO pueda
-          abrir el archivo).
-        - relative_url_path: la ruta relativa y LIMPIA (siempre con '/',
-          nunca con '\\', sin importar el sistema operativo) que se guarda
-          en la base de datos y que Flutter usa para armar la URL completa.
-        """
+    def _save_image(self, contents: bytes, original_filename: str) -> Path:
+        upload_dir = UPLOADS_DIR
+
         extension = Path(original_filename).suffix.lower() or ".jpg"
         unique_name = f"{uuid.uuid4().hex}{extension}"
-        destination = UPLOADS_DIR / unique_name
+        destination = upload_dir / unique_name
 
         with open(destination, "wb") as f:
             f.write(contents)
 
-        # .as_posix() fuerza '/' siempre, incluso en Windows. Esto es clave:
-        # antes se guardaba str(destination), que en Windows produce
-        # backslashes ('uploads\\archivo.jpg'), rompiendo la URL que arma
-        # la app Flutter.
-        relative_url_path = f"uploads/{unique_name}"
+        return destination
 
-        return destination, relative_url_path
-
-    def run_prediction(self, user_id: int, contents: bytes, original_filename: str) -> PredictionResponseData:
-        image_path, image_url_path = self._save_image(contents, original_filename)
+    def run_prediction(
+        self,
+        user_id: int,
+        contents: bytes,
+        original_filename: str,
+        crop_id: int | None = None,
+    ) -> PredictionResponseData:
+        image_path = self._save_image(contents, original_filename)
 
         try:
             yolo = YOLOService.get_instance()
@@ -57,8 +51,6 @@ class PredictionService:
             ) from exc
 
         try:
-            # YOLO sigue recibiendo la ruta ABSOLUTA real (image_path),
-            # eso no cambia: necesita poder abrir el archivo físicamente.
             raw_detections = yolo.predict(str(image_path))
         except Exception as exc:
             raise HTTPException(
@@ -70,7 +62,8 @@ class PredictionService:
             return PredictionResponseData(
                 plant="papa",
                 detections=[],
-                image_url=image_url_path,
+                image_url=str(image_path),
+                crop_id=crop_id,
             )
 
         result_items: list[DetectionResultItem] = []
@@ -90,21 +83,21 @@ class PredictionService:
 
         top_result = result_items[0]
 
-        # CAMBIO CLAVE: se guarda image_url_path (relativo, limpio, ej.
-        # "uploads/abc123.jpg"), NO la ruta absoluta del disco. Esa ruta
-        # relativa es justo lo que tu app Flutter espera para armar
-        # http://<host>/uploads/abc123.jpg con resolveBackendImageUrl().
         detection = self.detection_repository.create(
             user_id=user_id,
             plant="papa",
             disease=top_result.display_name,
             confidence=top_result.confidence,
-            image_path=image_url_path,
+            image_path=str(image_path),
+            crop_id=crop_id,
         )
 
         return PredictionResponseData(
             detection_id=detection.id,
             plant="papa",
             detections=result_items,
-            image_url=image_url_path,
+            image_url=str(image_path),
+            crop_id=detection.crop_id,
+            crop_name=detection.crop_name,
+            crop_variety=detection.crop_variety,
         )

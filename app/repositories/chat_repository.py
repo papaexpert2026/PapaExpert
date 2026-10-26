@@ -15,7 +15,7 @@ class ChatRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def create_session(self, user_id: int, detection_id: int) -> ChatSession:
+    def create_session(self, user_id: int, detection_id: int | None) -> ChatSession:
         session = ChatSession(user_id=user_id, detection_id=detection_id)
         self.db.add(session)
         self.db.commit()

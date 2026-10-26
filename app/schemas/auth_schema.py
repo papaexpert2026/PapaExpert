@@ -25,3 +25,6 @@ class UserOut(BaseModel):
     email: EmailStr
 
     model_config = {"from_attributes": True}
+
+class FirebaseLoginRequest(BaseModel):
+    id_token: str

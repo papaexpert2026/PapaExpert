@@ -13,11 +13,15 @@ sin importar el directorio de trabajo actual (cwd) al iniciar el servidor.
 
 from pathlib import Path
 
-# Este archivo está en: backend/app/core/paths.py
-# parent       -> backend/app/core
-# parent.parent -> backend/app
-# parent.parent.parent -> backend
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+from app.core.config import settings
 
-UPLOADS_DIR = BASE_DIR / "uploads"
+# Los paths relativos se anclan al directorio del backend; los absolutos
+# permiten usar un disco persistente de Render (por ejemplo /var/data/uploads).
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+configured_upload_dir = Path(settings.UPLOAD_DIR)
+UPLOADS_DIR = (
+    configured_upload_dir
+    if configured_upload_dir.is_absolute()
+    else BASE_DIR / configured_upload_dir
+)
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
